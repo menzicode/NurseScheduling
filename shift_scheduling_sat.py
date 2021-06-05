@@ -149,14 +149,14 @@ def solve_shift_scheduling(params, output_proto):
     num_shifts = len(shifts)
 
     # The required number of shifts worked per week
-    max_shifts_per_week_constraint = (0, 7)
+    max_shifts_per_week_constraint = (0, 4)
 	
 	
 	# The required number of day shifts in a 2 week schedule
     day_shifts_per_two_weeks = (1, num_days * num_shifts)
 	
     # Number of nurses that MUST be assigned to each shift
-    required_nurses_per_shift = 7
+    required_nurses_per_shift = 4
 
     model = cp_model.CpModel()
 
@@ -213,9 +213,9 @@ def solve_shift_scheduling(params, output_proto):
     # Print solution.
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         print()
-        header = '          '
+        header = '           '
         for w in range(num_weeks):
-            header += ' M   T   W   T   F   S   S   '
+            header += 'M   T   W   T   F   S   S   '
         print(header)
         for e in range(num_employees):
             schedule = ''
