@@ -148,15 +148,15 @@ def solve_shift_scheduling(params, output_proto):
     num_days = num_weeks * 7
     num_shifts = len(shifts)
 
-    # The required number of shifts worked per week
+    # The required number of shifts worked per week (min, max)
     max_shifts_per_week_constraint = (0, 4)
 	
 	
-	# The required number of day shifts in a 2 week schedule
+	# The required number of day shifts in a 2 week schedule (min, max)
     day_shifts_per_two_weeks = (1, num_days * num_shifts)
 	
-    # Number of nurses that MUST be assigned to each shift
-    required_nurses_per_shift = 4
+    # Number of nurses that MUST be assigned to each shift (min, max)
+    required_nurses_per_shift = (4, 4)
 
     model = cp_model.CpModel()
 
@@ -168,12 +168,13 @@ def solve_shift_scheduling(params, output_proto):
 
 
     # Handle the required nurses per shift constraint
+    hard_min, hard_max = required_nurses_per_shift
     for s in range(num_shifts):
         for w in range(num_weeks):
             for d in range(7):
                 works = [work[e, w * 7 + d, s] for e in range(num_employees)]
                 # Ignore Off shift.
-                worked = model.NewIntVar(required_nurses_per_shift, required_nurses_per_shift, '')
+                worked = model.NewIntVar(hard_min, hard_max, '')
                 model.Add(worked == sum(works))
 				
     # Handle the min day shifts per 2 weeks constraint
