@@ -19,16 +19,18 @@ from absl import flags
 from ortools.sat.python import cp_model
 from google.protobuf import text_format
 
+import MFO
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('output_proto', '',
                     'Output file to write the cp_model proto to.')
-flags.DEFINE_string('params', 'max_time_in_seconds:10.0',
+flags.DEFINE_string('params', 'max_time_in_seconds:300.0',
                     'Sat solver parameters.')
 					
 					
 # Data
-num_employees = 28
+num_employees = 25
 num_weeks = 2
 shifts = ['D', 'N']
 day_shift = 0
@@ -36,7 +38,7 @@ night_shift = 1
 num_days = num_weeks * 7
 num_shifts = len(shifts)
 
-solutions_to_find = 5
+solutions_to_find = 30
 
 
 def negated_bounded_span(works, start, length):
@@ -181,13 +183,13 @@ def solve_shift_scheduling(params, output_proto):
                 model.Add(worked == sum(works))
 				
     # Handle the min day shifts per 2 weeks constraint
-    hard_min, hard_max = day_shifts_per_two_weeks
-    for e in range(num_employees):
-        works = [work[e, d, day_shift] for d in range(num_days)]
-        variables, coeffs = add_soft_sum_constraint(
-                model, works, hard_min, hard_max,
-                'weekly_sum_constraint(employee %i, day shift)' %
-                (e))
+    # hard_min, hard_max = day_shifts_per_two_weeks
+    # for e in range(num_employees):
+        # works = [work[e, d, day_shift] for d in range(num_days)]
+        # variables, coeffs = add_soft_sum_constraint(
+                # model, works, hard_min, hard_max,
+                # 'weekly_sum_constraint(employee %i, day shift)' %
+                # (e))
 
     # Handle the max shifts per week constraint
     hard_min, hard_max = max_shifts_per_week_constraint
@@ -218,6 +220,7 @@ def solve_shift_scheduling(params, output_proto):
     print('  - conflicts       : %i' % solver.NumConflicts())
     print('  - branches        : %i' % solver.NumBranches())
     print('  - wall time       : %f s' % solver.WallTime())
+    return solution_printer.get_solutions()
 
 class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
     """Print intermediate solutions."""
@@ -228,26 +231,28 @@ class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
         self.__work = work
         self.__solution_count = 0
         self.__solution_limit = limit
+        self.__solutions = []
 
     def on_solution_callback(self):
         self.__solution_count += 1
 			
-        #if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        print('Schedule %i' % (self.__solution_count))
-        header = '           '
-        for w in range(num_weeks):
-            header += 'M   T   W   T   F   S   S   '
-        print(header)
-        for e in range(num_employees):
-            schedule = ''
-            for d in range(num_days):
-                schedule_to_add = ''
-                for s in range(num_shifts):
-                    if self.Value(self.__work[e, d, s]):
-                        schedule_to_add += shifts[s]
-                schedule += schedule_to_add.ljust(4)
-            print('worker %2i: %s' % (e, schedule))
-        print()
+        
+        self.__solutions.append([self.Value(self.__work[e, d, s]) for e in range(num_employees) for d in range(num_days) for s in range(num_shifts)])
+			
+        # header = '           '
+        # for w in range(num_weeks):
+            # header += 'M   T   W   T   F   S   S   '
+        # print(header)
+        # for e in range(num_employees):
+            # schedule = ''
+            # for d in range(num_days):
+                # schedule_to_add = ''
+                # for s in range(num_shifts):
+                    # if self.Value(self.__work[e, d, s]):
+                        # schedule_to_add += shifts[s]
+                # schedule += schedule_to_add.ljust(4)
+            # print('worker %2i: %s' % (e, schedule))
+        # print()
 	
         if self.__solution_count >= self.__solution_limit:
             print('Stop search after %i solutions' % self.__solution_limit)
@@ -255,9 +260,22 @@ class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
 
     def solution_count(self):
         return self.__solution_count
+		
+    def get_solutions(self):
+        return self.__solutions
 	
 def main(_):
-    solve_shift_scheduling(FLAGS.params, FLAGS.output_proto)
+    solutions = solve_shift_scheduling(FLAGS.params, FLAGS.output_proto)
+    MFO.MFO(solutions, Fitness, 0, 1, 1000)
+	
+def NurseFitness(nurse, schedule):
+    return 0
+	
+def Fitness(schedule):
+    sum = 0
+    for nurse in range(num_employees):
+        sum += NurseFitness(nurse, schedule)
+    return sum
 
 
 if __name__ == '__main__':
