@@ -209,7 +209,6 @@ def solve_shift_scheduling(params, output_proto):
     solver = cp_model.CpSolver()
     if params:
         text_format.Parse(params, solver.parameters)
-    #solution_printer = VarArraySolutionPrinterWithLimit([work[e, d, s] for e in range(num_employees) for d in range(num_days) for s in range(num_shifts)], 2)
     solution_printer = VarArraySolutionPrinterWithLimit(solver, work, solutions_to_find)
     status = solver.SearchForAllSolutions(model, solution_printer)
 
