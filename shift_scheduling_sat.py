@@ -25,6 +25,18 @@ flags.DEFINE_string('output_proto', '',
                     'Output file to write the cp_model proto to.')
 flags.DEFINE_string('params', 'max_time_in_seconds:10.0',
                     'Sat solver parameters.')
+					
+					
+# Data
+num_employees = 28
+num_weeks = 2
+shifts = ['D', 'N']
+day_shift = 0
+night_shift = 1
+num_days = num_weeks * 7
+num_shifts = len(shifts)
+
+solutions_to_find = 5
 
 
 def negated_bounded_span(works, start, length):
@@ -138,25 +150,16 @@ def add_soft_sum_constraint(model, works, hard_min, hard_max, prefix):
 
 def solve_shift_scheduling(params, output_proto):
     """Solves the shift scheduling problem."""
-    # Data
-    num_employees = 16
-    num_weeks = 2
-    shifts = ['D', 'N']
-    day_shift = 0
-    night_shift = 1
-	
-    num_days = num_weeks * 7
-    num_shifts = len(shifts)
 
     # The required number of shifts worked per week (min, max)
-    max_shifts_per_week_constraint = (0, 4)
+    max_shifts_per_week_constraint = (3, 4)
 	
 	
 	# The required number of day shifts in a 2 week schedule (min, max)
     day_shifts_per_two_weeks = (1, num_days * num_shifts)
 	
     # Number of nurses that MUST be assigned to each shift (min, max)
-    required_nurses_per_shift = (4, 4)
+    required_nurses_per_shift = (7, 7)
 
     model = cp_model.CpModel()
 
@@ -196,8 +199,6 @@ def solve_shift_scheduling(params, output_proto):
                 'weekly_sum_constraint(employee %i, shift %i, week %i)' %
                 (e, s, w))
 				
-			
-
 
     if output_proto:
         print('Writing proto to %s' % output_proto)
@@ -208,12 +209,32 @@ def solve_shift_scheduling(params, output_proto):
     solver = cp_model.CpSolver()
     if params:
         text_format.Parse(params, solver.parameters)
-    solution_printer = cp_model.ObjectiveSolutionPrinter()
-    status = solver.Solve(model, solution_printer)
+    #solution_printer = VarArraySolutionPrinterWithLimit([work[e, d, s] for e in range(num_employees) for d in range(num_days) for s in range(num_shifts)], 2)
+    solution_printer = VarArraySolutionPrinterWithLimit(solver, work, solutions_to_find)
+    status = solver.SearchForAllSolutions(model, solution_printer)
 
-    # Print solution.
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        print()
+    print()
+    print('Statistics')
+    print('  - status          : %s' % solver.StatusName(status))
+    print('  - conflicts       : %i' % solver.NumConflicts())
+    print('  - branches        : %i' % solver.NumBranches())
+    print('  - wall time       : %f s' % solver.WallTime())
+
+class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
+    """Print intermediate solutions."""
+
+    def __init__(self, solver, work, limit):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+        self.__solver = solver
+        self.__work = work
+        self.__solution_count = 0
+        self.__solution_limit = limit
+
+    def on_solution_callback(self):
+        self.__solution_count += 1
+			
+        #if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        print('Schedule %i' % (self.__solution_count))
         header = '           '
         for w in range(num_weeks):
             header += 'M   T   W   T   F   S   S   '
@@ -223,20 +244,19 @@ def solve_shift_scheduling(params, output_proto):
             for d in range(num_days):
                 schedule_to_add = ''
                 for s in range(num_shifts):
-                    if solver.BooleanValue(work[e, d, s]):
+                    if self.Value(self.__work[e, d, s]):
                         schedule_to_add += shifts[s]
                 schedule += schedule_to_add.ljust(4)
             print('worker %2i: %s' % (e, schedule))
         print()
+	
+        if self.__solution_count >= self.__solution_limit:
+            print('Stop search after %i solutions' % self.__solution_limit)
+            self.StopSearch()
 
-    print()
-    print('Statistics')
-    print('  - status          : %s' % solver.StatusName(status))
-    print('  - conflicts       : %i' % solver.NumConflicts())
-    print('  - branches        : %i' % solver.NumBranches())
-    print('  - wall time       : %f s' % solver.WallTime())
-
-
+    def solution_count(self):
+        return self.__solution_count
+	
 def main(_):
     solve_shift_scheduling(FLAGS.params, FLAGS.output_proto)
 
