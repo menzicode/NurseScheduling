@@ -11,7 +11,7 @@ from solution import solution
 import time
 
 
-def GWO(objf, lb, ub, dim, SearchAgents_no, Max_iter):
+def GWO(initial_solutions, objf, lb, ub, Max_iter):
 
     # Max_iter=1000
     # lb=-100
@@ -19,6 +19,8 @@ def GWO(objf, lb, ub, dim, SearchAgents_no, Max_iter):
     # dim=30
     # SearchAgents_no=5
 
+    dim = len(initial_solutions[0])
+    SearchAgents_no = len(initial_solutions)
     # initialize alpha, beta, and delta_pos
     Alpha_pos = numpy.zeros(dim)
     Alpha_score = float("inf")

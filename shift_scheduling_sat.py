@@ -20,6 +20,7 @@ from ortools.sat.python import cp_model
 from google.protobuf import text_format
 
 import MFO
+import GWO
 
 FLAGS = flags.FLAGS
 
@@ -266,7 +267,13 @@ class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
 	
 def main(_):
 	solutions = solve_shift_scheduling(FLAGS.params, FLAGS.output_proto)
+	
+	print("\nStarting GWO\n")
+	GWO.GWO(solutions, Fitness, 0, 1, 1000)
+
+	print("Starting MFO\n")
 	MFO.MFO(solutions, Fitness, 0, 1, 1000)
+
 	
 def CheckValidity(schedule):
 	# Check for correct number of nurses assigned to shifts
