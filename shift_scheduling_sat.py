@@ -156,7 +156,6 @@ def solve_shift_scheduling(params, output_proto):
 	# The required number of shifts worked per week (min, max)
 	max_shifts_per_week_constraint = (3, 4)
 	
-	
 	# The required number of day shifts in a 2 week schedule (min, max)
 	day_shifts_per_two_weeks = (1, num_days * num_shifts)
 	
@@ -238,21 +237,22 @@ class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
 			
 		
 		self.__solutions.append([self.Value(self.__work[e, d, s]) for e in range(num_employees) for d in range(num_days) for s in range(num_shifts)])
-			
-		# header = '		   '
-		# for w in range(num_weeks):
-			# header += 'M	 T	 W	 T	 F	 S	 S	 '
-		# print(header)
-		# for e in range(num_employees):
-			# schedule = ''
-			# for d in range(num_days):
-				# schedule_to_add = ''
-				# for s in range(num_shifts):
-					# if self.Value(self.__work[e, d, s]):
-						# schedule_to_add += shifts[s]
-				# schedule += schedule_to_add.ljust(4)
-			# print('worker %2i: %s' % (e, schedule))
-		# print()
+		
+		# PRINTS THE 30 INITIAL SCHEDULES
+		header = '		   '
+		for w in range(num_weeks):
+			header += 'M	 T	 W	 T	 F	 S	 S	 '
+		print(header)
+		for e in range(num_employees):
+			schedule = ''
+			for d in range(num_days):
+				schedule_to_add = ''
+				for s in range(num_shifts):
+					if self.Value(self.__work[e, d, s]):
+						schedule_to_add += shifts[s]
+				schedule += schedule_to_add.ljust(4)
+			print('worker %2i: %s' % (e, schedule))
+		print()
 	
 		if self.__solution_count >= self.__solution_limit:
 			print('Stop search after %i solutions' % self.__solution_limit)
@@ -270,27 +270,50 @@ def main(_):
 	
 def CheckValidity(schedule):
 	# Check for correct number of nurses assigned to shifts
-	return 0
+	return True
 	
 def NurseFitness(nurse, schedule):
 	# Arbitrary implementation of a fitness function.
 	# A nurse wants to work on 1 specific day. If assigned to work any other day
 	# then add 10 points (overall goal is to minimize this number)
+
+
 	sum = 0
 	day_preference = nurse % num_days
 	for i in range(len(schedule)):
+
+		# NURSE
 		e = i // (num_days * num_shifts)
+
+		# 0-14 2 WEEKS
 		d = (i % (num_days * num_shifts)) // num_shifts
+
+		# DAY/NIGHT
 		s = i % num_shifts
+
+		# VIOLATION 1 BACK TO BACK SHIFTS 4 IN A ROW
+
+		# VIOLATION 2 DAY OF PREFERENCE
 		if schedule[i] == 1 and d != day_preference:
 			sum += 10
+
+		# VIOLATION 3 PREFERENCE FOR NIGHT OF DAY SHIFTS
+
+		# VIOLATION 4 PREFERENCE TO WORK WITH ANOTHER NURSE
 	return sum
 	
 def Fitness(schedule):
 	sum = 0
-	for nurse in range(num_employees):
-		sum += NurseFitness(nurse, schedule)
 	sum += CheckValidity(schedule)
+
+	if CheckValidity(schedule):
+		for nurse in range(num_employees):
+			sum += NurseFitness(nurse, schedule)
+
+	else: 
+		sum = 99999
+		return sum
+
 	return sum
 
 
