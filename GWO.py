@@ -38,10 +38,11 @@ def GWO(initial_solutions, objf, lb, ub, Max_iter):
 
     # Initialize the positions of search agents
     Positions = numpy.zeros((SearchAgents_no, dim))
-    for i in range(dim):
-        Positions[:, i] = (
-            numpy.random.uniform(0, 1, SearchAgents_no) * (ub[i] - lb[i]) + lb[i]
-        )
+    for i in range(SearchAgents_no):
+        # Positions[:, i] = (
+        #     numpy.random.uniform(0, 1, SearchAgents_no) * (ub[i] - lb[i]) + lb[i]
+        # )
+        Positions[i, :] = numpy.array(initial_solutions[i])
 
     Convergence_curve = numpy.zeros(Max_iter)
     s = solution()
