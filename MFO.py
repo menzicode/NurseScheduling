@@ -177,3 +177,5 @@ def MFO(initial_solutions, objf, lb, ub, Max_iteration):
 	s.objfname = objf.__name__
 
 	return s
+
+
