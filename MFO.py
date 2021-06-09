@@ -134,7 +134,7 @@ def MFO(initial_solutions, objf, lb, ub, Max_iteration, printer):
 					t = (a - 1) * random.random() + 1
 					#
 					#				 % Eq. (3.12)
-					Moth_pos[i, j] = (
+					Moth_pos[i, j] = round(
 						distance_to_flame * math.exp(b * t) * math.cos(t * 2 * math.pi)
 						+ sorted_population[i, j]
 					)
@@ -150,7 +150,7 @@ def MFO(initial_solutions, objf, lb, ub, Max_iteration, printer):
 					t = (a - 1) * random.random() + 1
 					#
 					#				 % Eq. (3.12)
-					Moth_pos[i, j] = (
+					Moth_pos[i, j] = round(
 						distance_to_flame * math.exp(b * t) * math.cos(t * 2 * math.pi)
 						+ sorted_population[Flame_no, j]
 					)
