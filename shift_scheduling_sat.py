@@ -269,15 +269,56 @@ def main(_):
 	solutions = solve_shift_scheduling(FLAGS.params, FLAGS.output_proto)
 	
 	print("\nStarting GWO\n")
-	GWO.GWO(solutions, Fitness, 0, 1, 1000)
+	GWO.GWO(solutions, Fitness, 0, 1, 1000, PrintSchedule)
 
 	print("Starting MFO\n")
-	MFO.MFO(solutions, Fitness, 0, 1, 1000)
+	MFO.MFO(solutions, Fitness, 0, 1, 1000, PrintSchedule)
 
+def PrintSchedule(schedule):
+	header = '           '
+	for w in range(1):
+		header += 'M   T   W   T   F   S   S   M   T   W   T   F   S   S'
+	print(header)
+	for e in range(num_employees):
+		schedule_text = ''
+		for d in range(num_days):
+			schedule_to_add = ''
+			i = e * (num_days*num_shifts) + d * num_shifts
+			if schedule[i] == 1:
+				schedule_to_add += 'D'
+			if schedule[i+1] == 1:
+				schedule_to_add += 'N'
+			schedule_text += schedule_to_add.ljust(4)
+		print('worker %2i: %s' % (e, schedule_text))
+	print()
 	
 def CheckValidity(schedule):
 	# Check for correct number of nurses assigned to shifts
+	for d in range(num_days):
+		for s in range(num_shifts):
+			nurses_on_shift = [schedule[i] for i in range(len(schedule)) if (i % (num_days * num_shifts)) // num_shifts == d and i % num_shifts == s].count(1)
+			if nurses_on_shift != 7:
+				return False	
+
+	for nurse in range(num_employees):
+		day_shift_req_met = False
+		for i in range(nurse * num_days * num_shifts, (nurse+1) * num_days * num_shifts, 2):
+			if schedule[i] == 1:
+				day_shift_req_met = True
+				break
+		if not day_shift_req_met:
+			return False
+		
+		for week in range(num_weeks):
+			shift_count = 0
+			for i in range(nurse * week * 7 * num_shifts, nurse * week * 7 * num_shifts + 7 * num_shifts):
+				if schedule[i] == 1:
+					shift_count += 1
+			if shift_count < 3 or shift_count > 4:
+				return False
+
 	return True
+
 	
 def NurseFitness(nurse, schedule):
 	# Arbitrary implementation of a fitness function.
@@ -311,7 +352,6 @@ def NurseFitness(nurse, schedule):
 	
 def Fitness(schedule):
 	sum = 0
-	sum += CheckValidity(schedule)
 
 	if CheckValidity(schedule):
 		for nurse in range(num_employees):

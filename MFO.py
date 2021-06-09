@@ -12,7 +12,7 @@ from solution import solution
 import time
 
 
-def MFO(initial_solutions, objf, lb, ub, Max_iteration):
+def MFO(initial_solutions, objf, lb, ub, Max_iteration, printer):
 
 	# Max_iteration=1000
 	# lb=-100
@@ -166,6 +166,8 @@ def MFO(initial_solutions, objf, lb, ub, Max_iteration):
 					+ str(Best_flame_score)
 				]
 			)
+
+			printer(Best_flame_pos)
 
 		Iteration = Iteration + 1
 

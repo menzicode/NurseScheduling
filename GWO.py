@@ -11,7 +11,7 @@ from solution import solution
 import time
 
 
-def GWO(initial_solutions, objf, lb, ub, Max_iter):
+def GWO(initial_solutions, objf, lb, ub, Max_iter, printer):
 
     # Max_iter=1000
     # lb=-100
@@ -137,6 +137,8 @@ def GWO(initial_solutions, objf, lb, ub, Max_iter):
             print(
                 ["At iteration " + str(l) + " the best fitness is " + str(Alpha_score)]
             )
+            printer(Alpha_pos)
+
 
     timerEnd = time.time()
     s.endTime = time.strftime("%Y-%m-%d-%H-%M-%S")
