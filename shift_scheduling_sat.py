@@ -262,7 +262,30 @@ def main(_):
 	
 def CheckValidity(schedule):
 	# Check for correct number of nurses assigned to shifts
-	return 0
+	for d in range(num_days):
+		for s in range(num_shifts):
+			nurses_on_shift = [schedule[i] for i in range(len(schedule)) if (i % (num_days * num_shifts)) // num_shifts == d and i % num_shifts == s].count(1)
+			if nurses_on_shift != 7:
+				return False	
+
+	for nurse in range(num_employees):
+		day_shift_req_met = False
+		for i in range(nurse * num_days * num_shifts, (nurse+1) * num_days * num_shifts, 2):
+			if schedule[i] == 1:
+				day_shift_req_met = True
+				break
+		if not day_shift_req_met:
+			return False
+		
+		for week in range(num_weeks):
+			shift_count = 0
+			for i in range(nurse * week * 7 * num_shifts, nurse * week * 7 * num_shifts + 7 * num_shifts):
+				if schedule[i] == 1:
+					shift_count += 1
+			if shift_count < 3 or shift_count > 4:
+				return False
+
+	return True
 	
 def NurseFitness(nurse, schedule):
 	# Arbitrary implementation of a fitness function.
@@ -280,9 +303,15 @@ def NurseFitness(nurse, schedule):
 	
 def Fitness(schedule):
 	sum = 0
-	for nurse in range(num_employees):
-		sum += NurseFitness(nurse, schedule)
-	sum += CheckValidity(schedule)
+
+	if CheckValidity(schedule):
+		for nurse in range(num_employees):
+			sum += NurseFitness(nurse, schedule)
+
+	else: 
+		sum = 99999
+		return sum
+
 	return sum
 
 
