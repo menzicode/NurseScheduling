@@ -13,16 +13,17 @@
 # limitations under the License.
 """Creates a shift scheduling problem and solves it."""
 
+
 from absl import app
 from absl import flags
 
 from ortools.sat.python import cp_model
 from google.protobuf import text_format
 
-import MFO
+import MVO
 
 FLAGS = flags.FLAGS
-
+        
 flags.DEFINE_string('output_proto', '',
 					'Output file to write the cp_model proto to.')
 flags.DEFINE_string('params', 'max_time_in_seconds:300.0',
@@ -43,16 +44,13 @@ solutions_to_find = 30
 
 def negated_bounded_span(works, start, length):
 	"""Filters an isolated sub-sequence of variables assined to True.
-
   Extract the span of Boolean variables [start, start + length), negate them,
   and if there is variables to the left/right of this span, surround the span by
   them in non negated form.
-
   Args:
 	works: a list of variables to extract the span from.
 	start: the start to the span.
 	length: the length of the span.
-
   Returns:
 	a list of variables which conjunction will be false if the sub-list is
 	assigned to True, and correctly bounded by variables assigned to False,
@@ -72,11 +70,9 @@ def negated_bounded_span(works, start, length):
 
 def add_soft_sequence_constraint(model, works, hard_min, hard_max, prefix):
 	"""Sequence constraint on true variables with soft and hard bounds.
-
   This constraint look at every maximal contiguous sequence of variables
   assigned to true. If forbids sequence of length < hard_min or > hard_max.
   Then it creates penalty terms if the length is < soft_min or > soft_max.
-
   Args:
 	model: the sequence constraint is built on this model.
 	works: a list of Boolean variables.
@@ -93,7 +89,6 @@ def add_soft_sequence_constraint(model, works, hard_min, hard_max, prefix):
 	max_cost: the coefficient of the linear penalty if the length is more than
 	  soft_max.
 	prefix: a base name for penalty literals.
-
   Returns:
 	a tuple (variables_list, coefficient_list) containing the different
 	penalties created by the sequence constraint.
@@ -115,11 +110,9 @@ def add_soft_sequence_constraint(model, works, hard_min, hard_max, prefix):
 
 def add_soft_sum_constraint(model, works, hard_min, hard_max, prefix):
 	"""Sum constraint with soft and hard bounds.
-
   This constraint counts the variables assigned to true from works.
   If forbids sum < hard_min or > hard_max.
   Then it creates penalty terms if the sum is < soft_min or > soft_max.
-
   Args:
 	model: the sequence constraint is built on this model.
 	works: a list of Boolean variables.
@@ -136,7 +129,6 @@ def add_soft_sum_constraint(model, works, hard_min, hard_max, prefix):
 	max_cost: the coefficient of the linear penalty if the sum is more than
 	  soft_max.
 	prefix: a base name for penalty variables.
-
   Returns:
 	a tuple (variables_list, coefficient_list) containing the different
 	penalties created by the sequence constraint.
@@ -266,7 +258,7 @@ class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
 	
 def main(_):
 	solutions = solve_shift_scheduling(FLAGS.params, FLAGS.output_proto)
-	MFO.MFO(solutions, Fitness, 0, 1, 1000)
+	MVO.MVO(solutions, Fitness, 0, 1, 1000)
 	
 def CheckValidity(schedule):
 	# Check for correct number of nurses assigned to shifts
