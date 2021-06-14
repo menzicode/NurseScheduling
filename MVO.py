@@ -12,7 +12,7 @@ import math
 import sklearn
 from numpy import asarray
 from sklearn.preprocessing import normalize
-from sol import solution
+from solution import solution
 
 
 
