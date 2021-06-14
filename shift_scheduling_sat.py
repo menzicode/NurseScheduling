@@ -13,17 +13,19 @@
 # limitations under the License.
 """Creates a shift scheduling problem and solves it."""
 
-
 from absl import app
 from absl import flags
 
 from ortools.sat.python import cp_model
 from google.protobuf import text_format
 
+import random
+
+import MFO
 import MVO
 
 FLAGS = flags.FLAGS
-        
+
 flags.DEFINE_string('output_proto', '',
 					'Output file to write the cp_model proto to.')
 flags.DEFINE_string('params', 'max_time_in_seconds:300.0',
@@ -146,8 +148,7 @@ def solve_shift_scheduling(params, output_proto):
 	"""Solves the shift scheduling problem."""
 
 	# The required number of shifts worked per week (min, max)
-	max_shifts_per_week_constraint = (3, 4)
-	
+	max_shifts_per_week_constraint = (0, 4)
 	
 	# The required number of day shifts in a 2 week schedule (min, max)
 	day_shifts_per_two_weeks = (1, num_days * num_shifts)
@@ -230,21 +231,22 @@ class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
 			
 		
 		self.__solutions.append([self.Value(self.__work[e, d, s]) for e in range(num_employees) for d in range(num_days) for s in range(num_shifts)])
-			
-		# header = '		   '
-		# for w in range(num_weeks):
-			# header += 'M	 T	 W	 T	 F	 S	 S	 '
-		# print(header)
-		# for e in range(num_employees):
-			# schedule = ''
-			# for d in range(num_days):
-				# schedule_to_add = ''
-				# for s in range(num_shifts):
-					# if self.Value(self.__work[e, d, s]):
-						# schedule_to_add += shifts[s]
-				# schedule += schedule_to_add.ljust(4)
-			# print('worker %2i: %s' % (e, schedule))
-		# print()
+		
+		# PRINTS THE 30 INITIAL SCHEDULES
+		header = '		   '
+		for w in range(num_weeks):
+			header += 'M	 T	 W	 T	 F	 S	 S	 '
+		print(header)
+		for e in range(num_employees):
+			schedule = ''
+			for d in range(num_days):
+				schedule_to_add = ''
+				for s in range(num_shifts):
+					if self.Value(self.__work[e, d, s]):
+						schedule_to_add += shifts[s]
+				schedule += schedule_to_add.ljust(4)
+			print('worker %2i: %s' % (e, schedule))
+		print()
 	
 		if self.__solution_count >= self.__solution_limit:
 			print('Stop search after %i solutions' % self.__solution_limit)
@@ -258,7 +260,29 @@ class VarArraySolutionPrinterWithLimit(cp_model.CpSolverSolutionCallback):
 	
 def main(_):
 	solutions = solve_shift_scheduling(FLAGS.params, FLAGS.output_proto)
-	MVO.MVO(solutions, Fitness, 0, 1, 1000)
+	
+	print("Starting MFO\n")
+	MVO.MVO(solutions, Fitness, 0, 1, 100, PrintSchedule)
+
+
+
+def PrintSchedule(schedule):
+	header = '           '
+	for w in range(1):
+		header += 'M   T   W   T   F   S   S   M   T   W   T   F   S   S'
+	print(header)
+	for e in range(num_employees):
+		schedule_text = ''
+		for d in range(num_days):
+			schedule_to_add = ''
+			i = e * (num_days*num_shifts) + d * num_shifts
+			if schedule[i] == 1:
+				schedule_to_add += 'D'
+			if schedule[i+1] == 1:
+				schedule_to_add += 'N'
+			schedule_text += schedule_to_add.ljust(4)
+		print('worker %2i: %s' % (e, schedule_text))
+	print()
 	
 def CheckValidity(schedule):
 	# Check for correct number of nurses assigned to shifts
@@ -282,24 +306,64 @@ def CheckValidity(schedule):
 			for i in range(nurse * week * 7 * num_shifts, nurse * week * 7 * num_shifts + 7 * num_shifts):
 				if schedule[i] == 1:
 					shift_count += 1
-			if shift_count < 3 or shift_count > 4:
+			if shift_count < 0 or shift_count > 4:
 				return False
 
 	return True
+
 	
 def NurseFitness(nurse, schedule):
 	# Arbitrary implementation of a fitness function.
 	# A nurse wants to work on 1 specific day. If assigned to work any other day
 	# then add 10 points (overall goal is to minimize this number)
+
+
 	sum = 0
+	prefDay = True
 	day_preference = nurse % num_days
-	for i in range(len(schedule)):
-		e = i // (num_days * num_shifts)
-		d = (i % (num_days * num_shifts)) // num_shifts
-		s = i % num_shifts
-		if schedule[i] == 1 and d != day_preference:
+	if nurse % 3 == 0:
+		prefDay = False
+
+
+	for i in range(num_days * num_shifts * nurse, num_days * num_shifts * (nurse + 1)):
+		if schedule[i] == 1 and i - num_days * num_shifts * nurse == day_preference:
 			sum += 10
+		elif schedule[i] == 1 and i - 7 - num_days * num_shifts * nurse == day_preference:
+			sum += 10
+
+		if i % 2 == 1 and schedule[i] == 1 and prefDay == True:
+			sum += 10
+
+		if i % 2 == 0 and schedule[i] == 1 and prefDay == False:
+			sum += 10
+		
+		if i > num_days * num_shifts * nurse:
+			if schedule[i] == 1 and schedule[i-1] == 1:
+				sum += 10
+
+	counter = 0
+	working = []
+	for i in range(num_employees):
+		working.append(False)
+	for i in range(num_days * num_shifts * nurse, num_days * num_shifts * (nurse + 1)):
+		if schedule[i] == 1:
+			for j in range(num_employees):
+				if schedule[counter + num_days * num_shifts * j] == 1 and j != nurse:
+					working[j] = True
+		counter += 1
+	counter = 0
+	likesum = 0
+	for i in range(len(working)):
+		if working[i] == True:
+			counter += 1
+			likesum += abs(nurse - i)
+
+	friendship = likesum // counter
+
+	sum += friendship
+	
 	return sum
+
 	
 def Fitness(schedule):
 	sum = 0
