@@ -207,13 +207,16 @@ def MVO(initial_solutions, objf, lb, ub, Max_time, printer):
                     
 
                     nursesWeek = []
+                    nursesWeekIndex = []
                     for h in range(dim):
                         if shift <= 13:
                             if 28 * nurse <= h and h < 28 * nurse + 14:
                                 nursesWeek.append(Universes[Black_hole_index, h])
+                                nursesWeekIndex.append(h)
                         elif shift > 13: 
                             if 28 * nurse + 14 <= h and h < 28 * (nurse + 1):
                                 nursesWeek.append(Universes[Black_hole_index, h])
+                                nursesWeekIndex.append(h)
 
                     shiftNum = 0
                     for i in range(len(nursesWeek)):
@@ -279,6 +282,7 @@ def MVO(initial_solutions, objf, lb, ub, Max_time, printer):
                                 if nursesWeek[i] == shiftArrayWhite[nurse] and replacedWeek[i] != shiftArrayWhite[nurse]:
                                     validShiftToSwitch.append(i)
                             random.shuffle(validShiftToSwitch)
+                            #if len(validShiftToSwitch) > 0:
                             if shift <= 13:
                                 indexA = 28 * nurse + validShiftToSwitch[0]
                                 indexB = 28 * replacedNurse + validShiftToSwitch[0]
@@ -292,6 +296,8 @@ def MVO(initial_solutions, objf, lb, ub, Max_time, printer):
                     # Check if the nurse you are removing will still have >= 1 day shift that week
                     # Check if the nurse you are giving work will still have <= 4 shifts that week
                     if shiftArrayWhite[nurse] < shiftArrayBlack[nurse]:
+                        # Least work - if any other nurses not on that shift already have < 4 shifts that week, 
+                        # just remove the chosen nurse and give one of those nurses work
                         lessThanFourIndex = []
                         anyLessThanFour = False
                         for i in range(len(shiftIndex)):
@@ -316,6 +322,74 @@ def MVO(initial_solutions, objf, lb, ub, Max_time, printer):
                             given = lessThanFourIndex[0]
                             Universes[Black_hole_index, j] = shiftArrayWhite[nurse]
                             Universes[Black_hole_index, given] = shiftArrayBlack[nurse]
+                        else:
+                            validToSwitchIndex = []
+                            for i in range(len(shiftIndex)):
+                                if i != nurse and shiftArrayBlack[i] == shiftArrayWhite[nurse]:
+                                    validToSwitchIndex.append(shiftIndex[i])
+                            random.shuffle(validToSwitchIndex)
+                            switched = validToSwitchIndex[0]
+                            switchedNurse = 0
+                            for h in range (len(shiftIndex)):
+                                if shiftIndex[h] == switched:
+                                    switchedNurse = h
+                            switchedSchedule = []
+                            switchedIndex = []
+                            for h in range(dim):
+                                if shift <= 13:
+                                    if 28 * switchedNurse <= h and h < 28 * switchedNurse + 14:
+                                        switchedSchedule.append(Universes[Black_hole_index, h])
+                                        switchedIndex.append(h)
+                                elif shift > 13:
+                                    if 28 * switchedNurse + 14 <= h and switchedNurse < 28 * (i + 1):
+                                        switchedSchedule.append(Universes[Black_hole_index, h])
+                                        switchedIndex.append(h)
+
+                            switchedScheduleDayShifts = 0
+                            for b in range(len(switchedSchedule)):
+                                switchedScheduleDayShifts += switchedSchedule[b]
+
+                            #scenarios
+                            # A day shift is being taken from Nurse A and Nurse A has > 1 day shifts
+                                # give Nurse A a night shift
+                            # A day shift is being taken from Nurse A and Nurse A has only 1 day shift
+                                # give nurse A day shift and give other nurse nurse A's day shift
+                            # A night shift is being taken from Nurse A and Nurse B has > 1 day shifts
+                                # give Nurse A any shift
+                            # A night shift is being taken from Nurse A and Nurse B has only 1 day shift
+                                # give Nurse A a night shift
+
+                            validToSwitchIndexB = []
+                            for n in range(len(switchedSchedule)):
+                                if dayShifts > 1 and shift % 2 == 0:
+                                    if switchedSchedule[n] == shiftArrayBlack[nurse] and n % 2 == 1:
+                                        if nursesWeek[n] == shiftArrayWhite[nurse]:
+                                            validToSwitchIndexB.append(switchedIndex[n])
+                                elif dayShifts == 1 and shift % 2 == 0:
+                                    if switchedSchedule[n] == shiftArrayBlack[nurse] and n % 2 == 0:
+                                        if nursesWeek[n] == shiftArrayWhite[nurse]:
+                                            validToSwitchIndexB.append(switchedIndex[n])
+                                elif shift % 2 == 1 and switchedScheduleDayShifts > 1:
+                                    if switchedSchedule[n] == shiftArrayBlack[nurse] and nursesWeek[n] == shiftArrayWhite[nurse]:
+                                        validToSwitchIndexB.append(switchedIndex[n])
+                                elif shift % 2 == 1 and switchedScheduleDayShifts == 1:
+                                    if switchedSchedule[n] == shiftArrayBlack[nurse] and nursesWeek[n] == shiftArrayWhite[nurse]:
+                                        if n % 2 == 1:
+                                            validToSwitchIndexB.append(switchedIndex[n])
+                            if len(validToSwitchIndexB) > 0:
+                                a = random.randint(0, len(validToSwitchIndexB) - 1)
+                                ind = validToSwitchIndexB[a]
+                                indB = 0
+                                for n in range(len(switchedIndex)):
+                                    if switchedIndex[n] == ind:
+                                        indB = nursesWeekIndex[n]
+                                Universes[Black_hole_index, j] = shiftArrayWhite[nurse]
+                                Universes[Black_hole_index, indB] = shiftArrayBlack[nurse]
+                                Universes[Black_hole_index, switched] = shiftArrayBlack[nurse]
+                                Universes[Black_hole_index, ind] = shiftArrayWhite[nurse]
+
+                            
+
                         
                 r2 = random.random()
                 
@@ -337,19 +411,23 @@ def MVO(initial_solutions, objf, lb, ub, Max_time, printer):
                     + str(Best_universe_Inflation_rate)
                 ]
             )
-            # for universe in Universes:
-                # print(Best_universe - universe)
-                # sum = 0
-                # for i in range(len(universe)):
-                #     sum += universe[i]
-                # print(sum)
-            # print("Best")
-            # printer(Best_universe)
-            # print("Others")
-            # for uni in Universes:
-            #     printer(uni)
+
 
         Time = Time + 1
+
+        # if Time == 10 or Time == 9:
+        #     # for universe in Universes:
+        #     #     print(Best_universe - universe)
+        #     #     sum = 0
+        #     #     for i in range(len(universe)):
+        #     #         sum += universe[i]
+        #     #     print(sum)
+        #     print("Best")
+        #     printer(Best_universe)
+        #     print("Others")
+        #     for uni in Universes:
+        #         printer(uni)
+
     timerEnd = time.time()
     s.endTime = time.strftime("%Y-%m-%d-%H-%M-%S")
     s.executionTime = timerEnd - timerStart
